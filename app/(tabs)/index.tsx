@@ -1,8 +1,8 @@
 import { addNotificationReceivedListener, addNotificationResponseListener, createPushNotification, registerForPushNotificationsAsync, showLocalNotification } from '@/utils/pushNotifications';
 import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
+import { WebView } from 'react-native-webview';
 
 export default function HomeScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -12,6 +12,19 @@ export default function HomeScreen() {
     // 앱 시작 시 push token 등록
     registerForPushNotificationsAsync().then(token => {
       console.log('Push token:', token);
+      // 웹뷰에 푸시 토큰 전달
+      if (token && webViewRef.current) {
+        setTimeout(() => {
+          const message = JSON.stringify({
+            type: 'PUSH_TOKEN_REGISTERED',
+            token: token
+          });
+          console.log('웹뷰로 메시지 전송:', message);
+          webViewRef.current?.postMessage(message);
+        }, 1000); // 웹뷰 로드 대기
+      } else {
+        console.log('토큰 또는 webViewRef가 없음:', { token, webViewRef: webViewRef.current });
+      }
     });
 
     // 알림 리스너 등록
@@ -33,6 +46,7 @@ export default function HomeScreen() {
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
+      console.log('웹뷰에서 받은 메시지:', message);
 
       // 메시지 타입에 따라 처리
       switch (message.type) {
