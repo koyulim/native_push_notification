@@ -1,12 +1,11 @@
-import { addNotificationReceivedListener, addNotificationResponseListener, createPushNotification, registerForPushNotificationsAsync, showLocalNotification } from '@/utils/pushNotifications';
-import { useEffect, useRef, useState } from 'react';
+import { addNotificationReceivedListener, addNotificationResponseListener, registerForPushNotificationsAsync, showLocalNotification } from '@/utils/pushNotifications';
+import { useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 import { WebView } from 'react-native-webview';
 
 export default function HomeScreen() {
   const webViewRef = useRef<WebView>(null);
-  const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
     // 앱 시작 시 push token 등록
@@ -50,18 +49,6 @@ export default function HomeScreen() {
 
       // 메시지 타입에 따라 처리
       switch (message.type) {
-        case 'USER_LOGIN':
-          // 로그인한 사용자 정보 저장
-          console.log('사용자 로그인:', message.data);
-          setUserInfo(message.data);
-          break;
-
-        case 'USER_LOGOUT':
-          // 로그아웃 처리
-          console.log('사용자 로그아웃');
-          setUserInfo(null);
-          break;
-
         case 'PUSH_TOKEN_REQUEST':
           // 웹뷰에서 푸시 토큰 요청 시
           registerForPushNotificationsAsync().then(token => {
@@ -88,17 +75,6 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('메시지 파싱 오류:', error);
     }
-  };
-
-  const handleSendNotification = async () => {
-    await createPushNotification('테스트', '푸시 알림 테스트입니다!');
-  };
-
-  // 웹뷰에 사용자 정보 요청 (필요시)
-  const requestUserInfo = () => {
-    webViewRef.current?.postMessage(JSON.stringify({
-      type: 'REQUEST_USER_INFO'
-    }));
   };
 
   return (
