@@ -1,98 +1,102 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { addNotificationReceivedListener, addNotificationResponseListener, createPushNotification, registerForPushNotificationsAsync, showLocalNotification } from '@/utils/pushNotifications';
+import { useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
+import type { WebViewMessageEvent } from 'react-native-webview';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const webViewRef = useRef<WebView>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    // 앱 시작 시 push token 등록
+    registerForPushNotificationsAsync().then(token => {
+      console.log('Push token:', token);
+    });
+
+    // 알림 리스너 등록
+    const notificationListener = addNotificationReceivedListener(notification => {
+      console.log('Notification received:', notification);
+    });
+
+    const responseListener = addNotificationResponseListener(response => {
+      console.log('Notification response:', response);
+    });
+
+    return () => {
+      notificationListener.remove();
+      responseListener.remove();
+    };
+  }, []);
+
+  // 웹뷰로부터 메시지를 받는 핸들러
+  const handleWebViewMessage = (event: WebViewMessageEvent) => {
+    try {
+      const message = JSON.parse(event.nativeEvent.data);
+
+      // 메시지 타입에 따라 처리
+      switch (message.type) {
+        case 'USER_LOGIN':
+          // 로그인한 사용자 정보 저장
+          console.log('사용자 로그인:', message.data);
+          setUserInfo(message.data);
+          break;
+
+        case 'USER_LOGOUT':
+          // 로그아웃 처리
+          console.log('사용자 로그아웃');
+          setUserInfo(null);
+          break;
+
+        case 'PUSH_TOKEN_REQUEST':
+          // 웹뷰에서 푸시 토큰 요청 시
+          registerForPushNotificationsAsync().then(token => {
+            // 웹뷰로 푸시 토큰 전송
+            webViewRef.current?.postMessage(JSON.stringify({
+              type: 'PUSH_TOKEN',
+              token: token
+            }));
+          });
+          break;
+
+        case 'PUSH_NOTIFICATION':
+          // 웹뷰에서 푸시 알림 요청 시 즉시 표시
+          showLocalNotification(
+            message.data?.title || '알림',
+            message.data?.message || '푸시알림성공!'
+          );
+          console.log('푸시 알림 표시:', message.data);
+          break;
+
+        default:
+          console.log('알 수 없는 메시지:', message);
+      }
+    } catch (error) {
+      console.error('메시지 파싱 오류:', error);
+    }
+  };
+
+  const handleSendNotification = async () => {
+    await createPushNotification('테스트', '푸시 알림 테스트입니다!');
+  };
+
+  // 웹뷰에 사용자 정보 요청 (필요시)
+  const requestUserInfo = () => {
+    webViewRef.current?.postMessage(JSON.stringify({
+      type: 'REQUEST_USER_INFO'
+    }));
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+      <WebView
+        ref={webViewRef}
+        source={{ uri: 'https://nextjs-web-app-eight-fawn.vercel.app/' }}
+        style={{ flex: 1 }}
+        bounces={false}
+        onMessage={handleWebViewMessage}
+        javaScriptEnabled={true}
+      />
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
