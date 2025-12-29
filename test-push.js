@@ -1,9 +1,9 @@
 // 푸시 알림 Edge Function 수동 테스트
 require('dotenv').config();
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://ovtlfhqdlcklpwgxldql.supabase.co';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dGxmaHFkbGNrbHB3Z3hsZHFsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjA0MDQ0NywiZXhwIjoyMDgxNjE2NDQ3fQ.EjkXapjQldE77pOB97wyjYajb4AdcAReu_zOoyBWNeY';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function testPushNotification() {
   const userId = '17117a7c-905d-4079-8aa4-0d2268e610d2';
